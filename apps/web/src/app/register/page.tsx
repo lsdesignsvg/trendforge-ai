@@ -2,27 +2,27 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/components/auth-provider";
 
 export default function RegisterPage() {
+  const { signUp } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState<string | null>(null);
-  const router = useRouter();
-  const supabase = createClient();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  async function handleRegister() {
+  async function handleRegister(event: React.FormEvent) {
+    event.preventDefault();
     setMessage(null);
-    const { error } = await supabase.auth.signUp({ email, password });
-
-    if (error) {
-      setMessage(error.message);
-      return;
+    setIsSubmitting(true);
+    try {
+      await signUp(email, password);
+      setMessage("Cuenta creada. Revisa tu correo para confirmar el registro.");
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "No se pudo crear la cuenta.");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setMessage("Cuenta creada. Revisa tu correo para confirmar el registro.");
-    router.push("/login");
   }
 
   return (
@@ -31,7 +31,7 @@ export default function RegisterPage() {
         <h1 className="text-3xl font-semibold text-white">Crear cuenta</h1>
         <p className="mt-3 text-sm text-zinc-400">Regístrate para entrar a TrendForge AI.</p>
 
-        <div className="mt-6 space-y-4">
+        <form onSubmit={handleRegister} className="mt-6 space-y-4">
           <input
             className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none"
             placeholder="Correo electrónico"
@@ -46,16 +46,17 @@ export default function RegisterPage() {
             onChange={(event) => setPassword(event.target.value)}
           />
           <button
-            onClick={handleRegister}
-            className="w-full rounded-2xl bg-cyan-400 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300"
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full rounded-2xl bg-cyan-400 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:opacity-60"
           >
-            Registrarme
+            {isSubmitting ? "Creando..." : "Registrarme"}
           </button>
           {message ? <p className="text-sm text-cyan-200">{message}</p> : null}
-        </div>
+        </form>
 
         <p className="mt-6 text-center text-sm text-zinc-400">
-          ¿Ya tienes cuenta?{' '}
+          ¿Ya tienes cuenta?{" "}
           <Link href="/login" className="text-cyan-300">
             Inicia sesión
           </Link>

@@ -15,7 +15,11 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }, [isLoading, user, router]);
 
   if (isLoading) {
-    return <div className="flex min-h-screen items-center justify-center bg-black text-white">Cargando...</div>;
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#030712] text-zinc-400">
+        Cargando...
+      </div>
+    );
   }
 
   if (!user) {

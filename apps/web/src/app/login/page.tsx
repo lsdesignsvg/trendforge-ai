@@ -2,25 +2,26 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/components/auth-provider";
 
 export default function LoginPage() {
+  const { signIn } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState<string | null>(null);
-  const router = useRouter();
-  const supabase = createClient();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  async function handleLogin() {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-    if (error) {
-      setMessage(error.message);
-      return;
+  async function handleLogin(event: React.FormEvent) {
+    event.preventDefault();
+    setMessage(null);
+    setIsSubmitting(true);
+    try {
+      await signIn(email, password);
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "No se pudo iniciar sesión.");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    router.push("/dashboard");
   }
 
   return (
@@ -29,7 +30,7 @@ export default function LoginPage() {
         <h1 className="text-3xl font-semibold text-white">Entrar a TrendForge AI</h1>
         <p className="mt-3 text-sm text-zinc-400">Inicia sesión con tu correo y contraseña.</p>
 
-        <div className="mt-6 space-y-4">
+        <form onSubmit={handleLogin} className="mt-6 space-y-4">
           <input
             className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none"
             placeholder="Correo electrónico"
@@ -44,13 +45,14 @@ export default function LoginPage() {
             onChange={(event) => setPassword(event.target.value)}
           />
           <button
-            onClick={handleLogin}
-            className="w-full rounded-2xl bg-cyan-400 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300"
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full rounded-2xl bg-cyan-400 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:opacity-60"
           >
-            Ingresar
+            {isSubmitting ? "Ingresando..." : "Ingresar"}
           </button>
           {message ? <p className="text-sm text-rose-400">{message}</p> : null}
-        </div>
+        </form>
 
         <div className="mt-6 flex flex-col gap-2 text-center text-sm text-zinc-400">
           <Link href="/register" className="text-cyan-300">

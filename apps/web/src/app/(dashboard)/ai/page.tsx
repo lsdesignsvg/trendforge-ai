@@ -2,14 +2,14 @@
 
 import { useMemo, useState } from "react";
 import { Sparkles } from "lucide-react";
+import { useAuth } from "@/components/auth-provider";
+import { saveLibraryItem } from "@/lib/supabase/services";
 
 type LibraryItem = {
   title: string;
   type: string;
   content: string;
 };
-
-const LIBRARY_KEY = "trendforge-library-items";
 
 function buildSuggestion(prompt: string): LibraryItem[] {
   const normalized = prompt.toLowerCase();
@@ -21,7 +21,7 @@ function buildSuggestion(prompt: string): LibraryItem[] {
       {
         title: "Hook de venta",
         type: "Reel",
-        content: `Hook: “El jersey que más vende no es el más caro, sino el más claro.”\nCTA: “Escribe 'INFO' y te comparto el pack.”`,
+        content: `Hook: "El jersey que más vende no es el más caro, sino el más claro."\nCTA: "Escribe 'INFO' y te comparto el pack."`,
       },
       {
         title: "Copy de carrusel",
@@ -51,7 +51,7 @@ function buildSuggestion(prompt: string): LibraryItem[] {
       {
         title: "CTA",
         type: "CTA",
-        content: `“Descubre el producto antes de que se agote y entra a la lista de espera.”`,
+        content: `"Descubre el producto antes de que se agote y entra a la lista de espera."`,
       },
     ];
   }
@@ -76,24 +76,36 @@ function buildSuggestion(prompt: string): LibraryItem[] {
 }
 
 export default function AiPage() {
+  const { user } = useAuth();
   const [prompt, setPrompt] = useState("Necesito vender jerseys para una marca deportiva.");
   const [suggestions, setSuggestions] = useState<LibraryItem[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
 
   const handleGenerate = () => {
     setSuggestions(buildSuggestion(prompt));
+    setMessage(null);
   };
 
-  const handleSaveToLibrary = () => {
-    const currentItems = JSON.parse(localStorage.getItem(LIBRARY_KEY) ?? "[]") as LibraryItem[];
-    const nextItems = [
-      ...currentItems,
-      {
-        title: `Generado: ${prompt.slice(0, 36)}`,
-        type: "IA",
-        content: suggestions.map((item) => `${item.title}: ${item.content}`).join("\n\n"),
-      },
-    ];
-    localStorage.setItem(LIBRARY_KEY, JSON.stringify(nextItems));
+  const handleSaveToLibrary = async () => {
+    if (!user?.id || suggestions.length === 0) return;
+    setIsSaving(true);
+    setMessage(null);
+
+    const { error } = await saveLibraryItem(user.id, {
+      title: `Generado: ${prompt.slice(0, 36)}`,
+      type: "IA",
+      content: suggestions.map((item) => `${item.title}: ${item.content}`).join("\n\n"),
+    });
+
+    setIsSaving(false);
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    setMessage("Guardado en tu biblioteca.");
     setSuggestions([]);
     setPrompt("");
   };
@@ -134,9 +146,10 @@ export default function AiPage() {
             {suggestions.length > 0 ? (
               <button
                 onClick={handleSaveToLibrary}
-                className="rounded-xl border border-white/10 px-3 py-2 text-sm text-zinc-300 transition hover:bg-white/5"
+                disabled={isSaving}
+                className="rounded-xl border border-white/10 px-3 py-2 text-sm text-zinc-300 transition hover:bg-white/5 disabled:opacity-60"
               >
-                Guardar en biblioteca
+                {isSaving ? "Guardando..." : "Guardar en biblioteca"}
               </button>
             ) : null}
           </div>
@@ -155,6 +168,8 @@ export default function AiPage() {
               {preview || "Tu propuesta aparecerá aquí con hooks, copy y CTA listos para publicar."}
             </div>
           )}
+
+          {message ? <p className="mt-4 text-sm text-cyan-300">{message}</p> : null}
         </article>
       </section>
     </div>

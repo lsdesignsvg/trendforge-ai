@@ -11,26 +11,30 @@ export default function ProfileForm() {
   const [niche, setNiche] = useState("");
   const [platform, setPlatform] = useState("");
   const [objective, setObjective] = useState("");
-  const [plan, setPlan] = useState("Pro");
-  const [credits, setCredits] = useState(850);
+  const [plan, setPlan] = useState("Free");
+  const [credits, setCredits] = useState(20);
   const [message, setMessage] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
+    let active = true;
     async function loadProfile() {
       if (!user?.id) return;
       const { data } = await getProfile(user.id);
-      if (data) {
-        setName(data.full_name ?? "");
-        setBrand(data.brand_name ?? "");
-        setNiche(data.niche ?? "");
-        setPlatform(data.main_platform ?? "");
-        setObjective(data.objective ?? "");
-        setPlan(data.plan ?? "Pro");
-        setCredits(data.ai_credits ?? 850);
-      }
+      if (!active || !data) return;
+      setName(data.full_name ?? "");
+      setBrand(data.brand_name ?? "");
+      setNiche(data.niche ?? "");
+      setPlatform(data.main_platform ?? "");
+      setObjective(data.objective ?? "");
+      setPlan(data.plan ?? "Free");
+      setCredits(data.ai_credits ?? 20);
     }
 
     loadProfile();
+    return () => {
+      active = false;
+    };
   }, [user]);
 
   async function save() {
@@ -38,6 +42,9 @@ export default function ProfileForm() {
       setMessage("Debes iniciar sesión para guardar el perfil.");
       return;
     }
+
+    setIsSaving(true);
+    setMessage(null);
 
     const { error } = await upsertProfile({
       id: user.id,
@@ -49,6 +56,8 @@ export default function ProfileForm() {
       plan,
       ai_credits: credits,
     });
+
+    setIsSaving(false);
 
     if (error) {
       setMessage(error.message);
@@ -63,30 +72,35 @@ export default function ProfileForm() {
       <input
         className="w-full rounded-2xl border border-white/10 bg-zinc-900/70 p-3 text-sm text-zinc-100 outline-none"
         placeholder="Nombre"
+        value={name}
         onChange={(event) => setName(event.target.value)}
       />
 
       <input
         className="w-full rounded-2xl border border-white/10 bg-zinc-900/70 p-3 text-sm text-zinc-100 outline-none"
         placeholder="Marca o empresa"
+        value={brand}
         onChange={(event) => setBrand(event.target.value)}
       />
 
       <input
         className="w-full rounded-2xl border border-white/10 bg-zinc-900/70 p-3 text-sm text-zinc-100 outline-none"
         placeholder="Nicho"
+        value={niche}
         onChange={(event) => setNiche(event.target.value)}
       />
 
       <input
         className="w-full rounded-2xl border border-white/10 bg-zinc-900/70 p-3 text-sm text-zinc-100 outline-none"
         placeholder="Plataforma principal"
+        value={platform}
         onChange={(event) => setPlatform(event.target.value)}
       />
 
       <input
         className="w-full rounded-2xl border border-white/10 bg-zinc-900/70 p-3 text-sm text-zinc-100 outline-none"
         placeholder="Objetivo"
+        value={objective}
         onChange={(event) => setObjective(event.target.value)}
       />
 
@@ -110,9 +124,10 @@ export default function ProfileForm() {
 
       <button
         onClick={save}
-        className="rounded-xl bg-white px-6 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200"
+        disabled={isSaving}
+        className="rounded-xl bg-white px-6 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200 disabled:opacity-60"
       >
-        Guardar perfil
+        {isSaving ? "Guardando..." : "Guardar perfil"}
       </button>
 
       {message ? <p className="text-sm text-cyan-300">{message}</p> : null}

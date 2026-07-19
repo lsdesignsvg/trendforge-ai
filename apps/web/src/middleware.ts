@@ -2,6 +2,9 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+const PROTECTED_PREFIXES = ["/dashboard", "/trends", "/ai", "/competitors", "/calendar", "/library", "/profile", "/settings", "/admin"];
+const AUTH_ROUTES = ["/login", "/register", "/forgot-password"];
+
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
     request: {
@@ -34,13 +37,22 @@ export async function middleware(request: NextRequest) {
     data: { session },
   } = await supabase.auth.getSession();
 
-  if (!session && request.nextUrl.pathname.startsWith("/dashboard")) {
-    return NextResponse.redirect(new URL("/login", request.url));
+  const pathname = request.nextUrl.pathname;
+  const isProtected = PROTECTED_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+  const isAuthRoute = AUTH_ROUTES.includes(pathname);
+
+  if (!session && isProtected) {
+    const redirect = NextResponse.redirect(new URL("/login", request.url));
+    return redirect;
+  }
+
+  if (session && isAuthRoute) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
   return response;
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*"],
+  matcher: ["/dashboard/:path*", "/trends/:path*", "/ai/:path*", "/competitors/:path*", "/calendar/:path*", "/library/:path*", "/profile/:path*", "/settings/:path*", "/admin/:path*", "/login", "/register", "/forgot-password"],
 };
